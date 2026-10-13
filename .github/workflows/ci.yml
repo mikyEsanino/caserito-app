@@ -1,0 +1,69 @@
+# Integración continua: se ejecuta en cada Pull Request y en cada push a develop o main.
+# Es parte de la Definición de Hecho (DoD): no se integra código con pruebas en rojo.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Lint, tipos y pruebas unitarias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npx vitest run tests/unit
+
+  integracion:
+    name: Pruebas de integración y e2e (Supabase local)
+    runs-on: ubuntu-latest
+    needs: calidad
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Levantar Supabase local y aplicar migraciones
+        run: supabase start
+
+      - name: Exportar claves de Supabase local
+        run: |
+          supabase status -o env > supabase.env
+          source supabase.env
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - name: Pruebas de API (CP01–CP17)
+        run: npx vitest run tests/api
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Pruebas e2e en navegador
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reporte-e2e
+          path: |
+            playwright-report/
+            docs/capturas/
+          retention-days: 14
