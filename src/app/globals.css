@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Paleta de Caserito: papel cálido, terracota de bodega y verde de "todo bien" */
+@theme {
+  --color-papel: #faf6ef;
+  --color-tarjeta: #ffffff;
+  --color-tinta: #1f1a14;
+  --color-suave: #6b6156;
+  --color-linea: #e6ddd0;
+  --color-marca: #b3431b;
+  --color-marca-oscura: #8f3413;
+  --color-marca-clara: #fbe9df;
+  --color-bien: #1d6b45;
+  --color-bien-claro: #e3f2e9;
+  --color-alerta: #9a5b00;
+  --color-alerta-clara: #fdf1d8;
+  --color-error: #a8261b;
+  --color-error-claro: #fbe4e1;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --radius-xl: 0.9rem;
+}
+
+html {
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-papel);
+  color: var(--color-tinta);
+  font-family: var(--font-sans);
+  min-height: 100dvh;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primario {
+    @apply bg-marca text-white hover:bg-marca-oscura focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-marca;
+  }
+  .btn-secundario {
+    @apply border border-linea bg-tarjeta text-tinta hover:bg-papel focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-marca;
+  }
+  .btn-peligro {
+    @apply bg-error text-white hover:opacity-90;
+  }
+  .campo {
+    @apply block w-full rounded-xl border border-linea bg-tarjeta px-4 py-3 text-base text-tinta placeholder:text-suave/70 focus:border-marca focus:outline-3 focus:outline-marca/25;
+  }
+  .campo[aria-invalid="true"] {
+    @apply border-error;
+  }
+  .etiqueta {
+    @apply mb-1.5 block text-sm font-semibold text-tinta;
+  }
+  .tarjeta {
+    @apply rounded-2xl border border-linea bg-tarjeta p-5 shadow-[0_1px_0_rgba(31,26,20,0.04)];
+  }
+}
