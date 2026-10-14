@@ -1,4 +1,5 @@
 import { Encabezado } from '@/components/ui';
+import { aFiltro } from '@/lib/alertas';
 import { requireContexto } from '@/lib/contexto';
 import { createClient } from '@/lib/supabase/server';
 import { hoyLima } from '@/lib/validaciones';
@@ -7,8 +8,9 @@ import { ListaStock, type FilaStock, type LoteVista } from './lista-stock';
 export const metadata = { title: 'Stock' };
 
 // HU06: stock por producto con detalle de lotes ordenado por vencimiento
-export default async function Stock() {
+export default async function Stock({ searchParams }: { searchParams: Promise<{ filtro?: string }> }) {
   await requireContexto();
+  const filtro = aFiltro((await searchParams).filtro);
   const supabase = await createClient();
   const [{ data: stock }, { data: lotes }] = await Promise.all([
     supabase
@@ -46,7 +48,7 @@ export default async function Stock() {
   return (
     <>
       <Encabezado titulo="Stock" descripcion="Toca un producto para ver sus lotes, del que vence primero al último." />
-      <ListaStock filas={filas} hoy={hoyLima()} />
+      <ListaStock filas={filas} hoy={hoyLima()} filtroInicial={filtro} />
     </>
   );
 }
