@@ -2,6 +2,10 @@
 // Además guarda capturas en docs/capturas para el informe.
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+
+config({ path: '.env.local', quiet: true });
 
 const id = randomUUID().slice(0, 6);
 const DUENO = { nombre: 'Rosa Quispe', email: `rosa_${id}@prueba.pe`, password: 'Bodega_Rosa_2026' };
@@ -193,6 +197,34 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await expect(page.getByText('Solo hay 6 disponibles.')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirmar venta' })).toBeDisabled();
     await captura(page, '11-venta-stock-insuficiente');
+  });
+
+  test('Alertas de vencimiento visibles desde el inicio', async ({ page }) => {
+    // Se simula que el lote de yogurt ya venció (retrocediendo su fecha con la clave de servicio)
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: { persistSession: false },
+    });
+    const { data: bodega } = await admin.from('bodegas').select('id').eq('nombre', BODEGA).single();
+    const { data: yogurt } = await admin.from('productos').select('id').eq('bodega_id', bodega!.id).eq('nombre', 'Yogurt Gloria fresa 1 L').single();
+    const { error } = await admin.from('lotes').update({ fecha_vencimiento: enDias(-1) }).eq('producto_id', yogurt!.id);
+    expect(error).toBeNull();
+
+    await ingresar(page, DUENO.email, DUENO.password);
+    await page.getByRole('link', { name: /con lotes vencidos/ }).click();
+    await expect(page).toHaveURL(/\/app\/stock\?filtro=vencidos/);
+
+    // Solo aparece el producto vencido, con su lote ya abierto y marcado
+    const lista = page.getByTestId('lista-stock').getByRole('listitem');
+    await expect(lista).toHaveCount(1);
+    await expect(lista.first()).toContainText('Yogurt Gloria fresa 1 L');
+    await expect(lista.first().getByTestId('alertas-producto')).toContainText('vencido');
+    await expect(lista.first().getByTestId('tabla-lotes')).toContainText('Vencido · no se vende');
+    await captura(page, '08b-stock-vencidos');
+
+    // Por vencer: la Inca Kola cuyo lote vence en 4 días
+    await page.getByRole('button', { name: /Por vencer/ }).click();
+    await expect(lista.filter({ hasText: 'Inca Kola 500 ml' })).toHaveCount(1);
+    await expect(lista.filter({ hasText: 'Inca Kola 500 ml' }).getByTestId('alertas-producto')).toContainText('vence en 4 días');
   });
 
   test('CP06 Registro de ayudante por el dueño', async ({ page }) => {

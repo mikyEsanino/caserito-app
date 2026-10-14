@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { Aviso } from '@/components/ui';
+import { porVencer, sinStock as estaSinStock, tieneVencidos } from '@/lib/alertas';
 import { requireContexto } from '@/lib/contexto';
 import { createClient } from '@/lib/supabase/server';
+import { hoyLima } from '@/lib/validaciones';
 
 export const metadata = { title: 'Inicio' };
 
@@ -13,11 +15,17 @@ export default async function InicioPanel({
   const ctx = await requireContexto();
   const { bienvenida, restringido } = await searchParams;
   const supabase = await createClient();
-  const { data: stock } = await supabase.from('v_stock').select('producto_id, stock_disponible, stock_vencido, activo');
+  const { data: stock } = await supabase
+    .from('v_stock')
+    .select('producto_id, stock_disponible, stock_vencido, proximo_vencimiento, activo');
 
-  const activos = (stock ?? []).filter((p) => p.activo);
-  const sinStock = activos.filter((p) => Number(p.stock_disponible) <= 0).length;
-  const conVencidos = activos.filter((p) => Number(p.stock_vencido) > 0).length;
+  const hoy = hoyLima();
+  const activos = (stock ?? [])
+    .filter((p) => p.activo)
+    .map((p) => ({ stock_disponible: Number(p.stock_disponible), stock_vencido: Number(p.stock_vencido), proximo_vencimiento: p.proximo_vencimiento }));
+  const sinStock = activos.filter(estaSinStock).length;
+  const conVencidos = activos.filter(tieneVencidos).length;
+  const prontos = activos.filter((p) => porVencer(p, hoy)).length;
   const esDueno = ctx.rol === 'dueno';
 
   return (
@@ -38,10 +46,11 @@ export default async function InicioPanel({
         <span aria-hidden="true" className="text-4xl">→</span>
       </Link>
 
-      <section aria-label="Resumen" className="grid grid-cols-3 gap-3">
-        <Dato valor={activos.length} texto="productos" />
-        <Dato valor={sinStock} texto="sin stock" tono={sinStock > 0 ? 'alerta' : undefined} />
-        <Dato valor={conVencidos} texto="con lotes vencidos" tono={conVencidos > 0 ? 'error' : undefined} />
+      <section aria-label="Resumen" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Dato valor={activos.length} texto="productos" href="/app/stock" />
+        <Dato valor={conVencidos} texto="con lotes vencidos" tono={conVencidos > 0 ? 'error' : undefined} href="/app/stock?filtro=vencidos" />
+        <Dato valor={prontos} texto="por vencer (7 días)" tono={prontos > 0 ? 'alerta' : undefined} href="/app/stock?filtro=por-vencer" />
+        <Dato valor={sinStock} texto="sin stock" tono={sinStock > 0 ? 'alerta' : undefined} href="/app/stock?filtro=sin-stock" />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
@@ -54,13 +63,14 @@ export default async function InicioPanel({
   );
 }
 
-function Dato({ valor, texto, tono }: { valor: number; texto: string; tono?: 'alerta' | 'error' }) {
+// Cada número lleva a la lista ya filtrada: así se ve de inmediato qué producto es
+function Dato({ valor, texto, tono, href }: { valor: number; texto: string; tono?: 'alerta' | 'error'; href: string }) {
   const color = tono === 'alerta' ? 'text-alerta' : tono === 'error' ? 'text-error' : 'text-tinta';
   return (
-    <div className="tarjeta p-4 text-center">
+    <Link href={href} className="tarjeta block p-4 text-center hover:border-marca">
       <p className={`text-3xl font-bold ${color}`}>{valor}</p>
       <p className="text-sm text-suave">{texto}</p>
-    </div>
+    </Link>
   );
 }
 
