@@ -120,6 +120,24 @@ describe('HU07 · Registro de venta', () => {
     expect(await stockDe(d.client, azucar)).toBe(0.5);
   });
 
+  it('CP14c Redondeo a favor del cliente en efectivo', async () => {
+    const d = await crearDueno();
+    const arroz = await crearProducto(d.client, { nombre: `Arroz ${unico()}`, unidad: 'kg', precio_venta: 4.2, categoria: 'Abarrotes' });
+    await ingresarLote(d.client, arroz, 50, 100);
+
+    // 8,7 kg × 4,20 = 36,54 → en efectivo se cobra 36,50
+    const efectivo = await vender(d.client, [{ producto_id: arroz, cantidad: 8.7 }], 'efectivo');
+    expect(efectivo.error).toBeNull();
+    expect(efectivo.data).toMatchObject({ total: 36.54, total_cobrado: 36.5, redondeo: 0.04 });
+
+    // Con Yape se cobra exacto
+    const yape = await vender(d.client, [{ producto_id: arroz, cantidad: 8.7 }], 'yape');
+    expect(yape.data).toMatchObject({ total: 36.54, total_cobrado: 36.54, redondeo: 0 });
+
+    const { data: guardada } = await d.client.from('ventas').select('total, total_cobrado').eq('id', efectivo.data.venta_id).single();
+    expect(guardada).toEqual({ total: 36.54, total_cobrado: 36.5 });
+  });
+
   it('CP17b Ventas simultáneas del último stock', async () => {
     const d = await crearDueno();
     const prod = await crearProducto(d.client);

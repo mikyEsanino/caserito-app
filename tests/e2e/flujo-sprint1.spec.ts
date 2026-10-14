@@ -169,7 +169,7 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await expect(page.getByTestId('venta-total')).toHaveText(/14\.50/);
     await captura(page, '09-venta-carrito');
     await page.getByRole('button', { name: 'Confirmar venta' }).click();
-    await expect(page.getByTestId('venta-ok')).toContainText('Total S/');
+    await expect(page.getByTestId('venta-ok')).toContainText('Cobrado S/');
     await expect(page.getByTestId('venta-ok')).toContainText('14.50');
     await captura(page, '10-venta-registrada');
 
@@ -183,6 +183,26 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await expect(filas.nth(1)).toContainText('24 de 24');
     const arroz = page.getByRole('listitem').filter({ hasText: 'Arroz Costeño a granel' });
     await expect(arroz.getByTestId('stock-total')).toHaveText('24');
+  });
+
+  test('CP14c Redondeo a favor del cliente en efectivo', async ({ page }) => {
+    await ingresar(page, DUENO.email, DUENO.password);
+    await page.goto('/app/vender');
+    await page.getByRole('button', { name: 'Agregar Arroz Costeño a granel', exact: true }).click();
+    await page.getByLabel('Cantidad de Arroz Costeño a granel').fill('1,24');
+    // 1,24 × 4,20 = 5,208 → 5,21; en efectivo se cobra 5,20
+    await expect(page.getByTestId('venta-subtotal')).toHaveText(/5\.21/);
+    await expect(page.getByTestId('venta-redondeo')).toHaveText(/0\.01/);
+    await expect(page.getByTestId('venta-total')).toHaveText(/5\.20/);
+    await captura(page, '11b-redondeo-efectivo');
+    // Con Yape no hay redondeo
+    await page.getByLabel('Método de pago').selectOption('yape');
+    await expect(page.getByTestId('venta-redondeo')).toHaveCount(0);
+    await expect(page.getByTestId('venta-total')).toHaveText(/5\.21/);
+    await page.getByLabel('Método de pago').selectOption('efectivo');
+    await page.getByRole('button', { name: 'Confirmar venta' }).click();
+    await expect(page.getByTestId('venta-ok')).toContainText('Cobrado S/');
+    await expect(page.getByTestId('venta-ok')).toContainText('5.20');
   });
 
   test('CP16 La interfaz no deja vender más que el stock', async ({ page }) => {

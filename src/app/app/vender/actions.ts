@@ -6,7 +6,9 @@ import { mensajeBD } from '@/lib/errores';
 import { createClient } from '@/lib/supabase/server';
 import { METODOS_PAGO, validarItemsVenta, type ItemVenta, type MetodoPago } from '@/lib/validaciones';
 
-export type ResultadoVenta = { ok: true; ventaId: number; total: number } | { ok: false; error: string };
+export type ResultadoVenta =
+  | { ok: true; ventaId: number; total: number; totalCobrado: number; metodo: MetodoPago }
+  | { ok: false; error: string };
 
 // HU07: la función registrar_venta() descuenta el stock por FEFO en una sola transacción
 export async function registrarVenta(items: ItemVenta[], metodoPago: MetodoPago): Promise<ResultadoVenta> {
@@ -20,6 +22,6 @@ export async function registrarVenta(items: ItemVenta[], metodoPago: MetodoPago)
   if (error) return { ok: false, error: mensajeBD(error, 'venta') };
 
   revalidatePath('/app', 'layout');
-  const r = data as { venta_id: number; total: number };
-  return { ok: true, ventaId: r.venta_id, total: Number(r.total) };
+  const r = data as { venta_id: number; total: number; total_cobrado: number };
+  return { ok: true, ventaId: r.venta_id, total: Number(r.total), totalCobrado: Number(r.total_cobrado), metodo };
 }
