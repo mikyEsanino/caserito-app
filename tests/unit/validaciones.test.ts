@@ -1,6 +1,7 @@
 // Pruebas unitarias de las reglas de validación de los formularios
 import { describe, expect, it } from 'vitest';
 import { esCorreoDuplicado, mensajeBD, mensajeLogin, MSJ_CREDENCIALES } from '@/lib/errores';
+import { redondeoEfectivo, totalACobrar } from '@/lib/dinero';
 import { diasHasta, enSoles, fecha } from '@/lib/formato';
 import {
   aNumero,
@@ -116,6 +117,28 @@ describe('Mensajes de error', () => {
       'Stock insuficiente para "Pan": disponible 2',
     );
     expect(mensajeBD({ code: '23505', message: 'duplicate key' }, 'producto')).toMatch(/Ya existe/);
+  });
+});
+
+describe('Redondeo en efectivo (art. 44, Ley 29571)', () => {
+  it.each([
+    [36.54, 36.5],
+    [5.21, 5.2],
+    [0.94, 0.9],
+    [0.26, 0.2],
+    [9.75, 9.7],
+    [14.5, 14.5],
+    [3, 3],
+    [0.09, 0],
+    [0.3 + 0.6, 0.9], // 0.8999999999999999 en punto flotante
+  ])('S/ %s en efectivo se cobra S/ %s', (total, cobrado) => {
+    expect(redondeoEfectivo(total)).toBe(cobrado);
+  });
+
+  it('con Yape, Plin o tarjeta se cobra exacto', () => {
+    expect(totalACobrar(36.54, 'yape')).toBe(36.54);
+    expect(totalACobrar(36.54, 'tarjeta')).toBe(36.54);
+    expect(totalACobrar(36.54, 'efectivo')).toBe(36.5);
   });
 });
 

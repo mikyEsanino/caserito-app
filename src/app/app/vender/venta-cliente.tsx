@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { Aviso } from '@/components/ui';
+import { totalACobrar } from '@/lib/dinero';
 import { cantidad as fmtCant, enSoles, NOMBRE_METODO, NOMBRE_UNIDAD } from '@/lib/formato';
 import { METODOS_PAGO, unidadFraccionable, type MetodoPago } from '@/lib/validaciones';
 import { registrarVenta } from './actions';
@@ -20,7 +21,7 @@ export function VentaCliente({ productos }: { productos: ProductoVenta[] }) {
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
   const [error, setError] = useState<string | null>(null);
-  const [ultima, setUltima] = useState<{ ventaId: number; total: number } | null>(null);
+  const [ultima, setUltima] = useState<{ ventaId: number; totalCobrado: number; metodo: MetodoPago } | null>(null);
   const [pendiente, startTransition] = useTransition();
 
   const visibles = useMemo(() => {
@@ -37,6 +38,8 @@ export function VentaCliente({ productos }: { productos: ProductoVenta[] }) {
     return { ...l, cant, valida, excede, subtotal: valida ? redondear(cant * l.producto.precio) : 0 };
   });
   const total = redondear(detalle.reduce((s, d) => s + d.subtotal, 0));
+  const aCobrar = totalACobrar(total, metodo);
+  const redondeo = redondear(total - aCobrar);
   const hayProblemas = detalle.some((d) => !d.valida || d.excede);
 
   function agregar(p: ProductoVenta) {
@@ -76,7 +79,7 @@ export function VentaCliente({ productos }: { productos: ProductoVenta[] }) {
         router.refresh();
         return;
       }
-      setUltima({ ventaId: r.ventaId, total: r.total });
+      setUltima({ ventaId: r.ventaId, totalCobrado: r.totalCobrado, metodo: r.metodo });
       setLineas([]);
       setMetodo('efectivo');
       router.refresh();
@@ -117,7 +120,7 @@ export function VentaCliente({ productos }: { productos: ProductoVenta[] }) {
       {detalle.length > 0 && (
         // En el celular el carrito queda debajo: esta barra lleva hasta él
         <a href="#venta-actual" className="fixed inset-x-4 bottom-20 z-10 flex items-center justify-between rounded-2xl bg-tinta px-5 py-3 font-semibold text-white shadow-lg lg:hidden">
-          <span>{detalle.length} producto{detalle.length === 1 ? '' : 's'} · {enSoles(total)}</span>
+          <span>{detalle.length} producto{detalle.length === 1 ? '' : 's'} · {enSoles(aCobrar)}</span>
           <span>Ver venta ↓</span>
         </a>
       )}
@@ -127,7 +130,9 @@ export function VentaCliente({ productos }: { productos: ProductoVenta[] }) {
           <h2 className="text-lg font-bold">Venta actual</h2>
           {ultima && (
             <Aviso tipo="bien">
-              <span data-testid="venta-ok">Venta #{ultima.ventaId} registrada · Total {enSoles(ultima.total)}</span>
+              <span data-testid="venta-ok">
+                Venta #{ultima.ventaId} registrada · Cobrado {enSoles(ultima.totalCobrado)} ({NOMBRE_METODO[ultima.metodo]})
+              </span>
             </Aviso>
           )}
           {error && <Aviso tipo="error"><span data-testid="venta-error">{error}</span></Aviso>}
@@ -168,9 +173,23 @@ export function VentaCliente({ productos }: { productos: ProductoVenta[] }) {
             </select>
           </div>
 
-          <div className="flex items-center justify-between border-t border-linea pt-3 text-xl font-bold">
-            <span>Total</span>
-            <span data-testid="venta-total">{enSoles(total)}</span>
+          <div className="space-y-1 border-t border-linea pt-3">
+            {redondeo > 0 && (
+              <>
+                <div className="flex items-center justify-between text-suave">
+                  <span>Subtotal</span>
+                  <span data-testid="venta-subtotal">{enSoles(total)}</span>
+                </div>
+                <div className="flex items-center justify-between text-bien" title="Art. 44 del Código de Protección y Defensa del Consumidor">
+                  <span>Redondeo a favor del cliente</span>
+                  <span data-testid="venta-redondeo">−{enSoles(redondeo)}</span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between text-xl font-bold">
+              <span>{metodo === 'efectivo' ? 'A cobrar' : 'Total'}</span>
+              <span data-testid="venta-total">{enSoles(aCobrar)}</span>
+            </div>
           </div>
           <button type="button" className="btn btn-primario w-full text-lg" onClick={confirmar}
             disabled={pendiente || detalle.length === 0 || hayProblemas}>
