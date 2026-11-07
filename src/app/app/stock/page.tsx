@@ -15,7 +15,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
   const [{ data: stock }, { data: lotes }] = await Promise.all([
     supabase
       .from('v_stock')
-      .select('producto_id, nombre, categoria, unidad, precio_venta, stock_disponible, stock_vencido, proximo_vencimiento, activo')
+      .select('producto_id, nombre, categoria, unidad, precio_venta, stock_disponible, stock_vencido, stock_minimo, proximo_vencimiento, activo')
       .eq('activo', true)
       .order('nombre'),
     supabase
@@ -41,6 +41,7 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
     precio_venta: Number(p.precio_venta),
     stock_disponible: Number(p.stock_disponible),
     stock_vencido: Number(p.stock_vencido),
+    stock_minimo: Number(p.stock_minimo),
     proximo_vencimiento: p.proximo_vencimiento,
     lotes: porProducto.get(p.producto_id) ?? [],
   }));
