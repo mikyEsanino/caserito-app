@@ -3,10 +3,15 @@ import { diasHasta } from './formato';
 /** Días de anticipación para avisar que un lote está por vencer. */
 export const DIAS_POR_VENCER = 7;
 
-export type FiltroStock = 'todos' | 'vencidos' | 'por-vencer' | 'sin-stock';
-export const FILTROS: FiltroStock[] = ['todos', 'vencidos', 'por-vencer', 'sin-stock'];
+export type FiltroStock = 'todos' | 'vencidos' | 'por-vencer' | 'stock-bajo' | 'sin-stock';
+export const FILTROS: FiltroStock[] = ['todos', 'vencidos', 'por-vencer', 'stock-bajo', 'sin-stock'];
 
-type ResumenProducto = { stock_disponible: number; stock_vencido: number; proximo_vencimiento: string | null };
+type ResumenProducto = {
+  stock_disponible: number;
+  stock_vencido: number;
+  proximo_vencimiento: string | null;
+  stock_minimo?: number;
+};
 
 export function tieneVencidos(p: ResumenProducto): boolean {
   return p.stock_vencido > 0;
@@ -20,9 +25,16 @@ export function sinStock(p: ResumenProducto): boolean {
   return p.stock_disponible <= 0;
 }
 
+/** HU14: el stock llegó al mínimo que definió el dueño (solo si definió uno). */
+export function stockBajo(p: ResumenProducto): boolean {
+  const minimo = p.stock_minimo ?? 0;
+  return minimo > 0 && p.stock_disponible <= minimo;
+}
+
 export function cumpleFiltro(p: ResumenProducto, filtro: FiltroStock, hoy: string): boolean {
   if (filtro === 'vencidos') return tieneVencidos(p);
   if (filtro === 'por-vencer') return porVencer(p, hoy);
+  if (filtro === 'stock-bajo') return stockBajo(p);
   if (filtro === 'sin-stock') return sinStock(p);
   return true;
 }

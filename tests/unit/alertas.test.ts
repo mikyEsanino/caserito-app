@@ -1,6 +1,6 @@
 // Filtros de alertas de la pantalla de stock
 import { describe, expect, it } from 'vitest';
-import { aFiltro, cumpleFiltro, porVencer } from '@/lib/alertas';
+import { aFiltro, cumpleFiltro, porVencer, stockBajo } from '@/lib/alertas';
 
 const hoy = '2026-10-13';
 const prod = (stock_disponible: number, stock_vencido: number, proximo_vencimiento: string | null) => ({ stock_disponible, stock_vencido, proximo_vencimiento });
@@ -16,6 +16,18 @@ describe('Alertas de stock', () => {
     expect(porVencer(prod(5, 0, '2026-10-20'), hoy)).toBe(true); // 7 días
     expect(porVencer(prod(5, 0, '2026-10-21'), hoy)).toBe(false); // 8 días
     expect(porVencer(prod(0, 0, null), hoy)).toBe(false);
+  });
+
+  it('HU14 stock bajo: stock menor o igual al mínimo, solo si hay mínimo definido', () => {
+    const conMinimo = (stock: number, minimo: number) => ({ ...prod(stock, 0, null), stock_minimo: minimo });
+    expect(stockBajo(conMinimo(5, 5))).toBe(true); // igual al mínimo
+    expect(stockBajo(conMinimo(4, 5))).toBe(true);
+    expect(stockBajo(conMinimo(0, 5))).toBe(true); // agotado también se repone
+    expect(stockBajo(conMinimo(6, 5))).toBe(false);
+    expect(stockBajo(conMinimo(0, 0))).toBe(false); // sin mínimo: no alerta
+    expect(stockBajo(prod(0, 0, null))).toBe(false);
+    expect(cumpleFiltro(conMinimo(2, 10), 'stock-bajo', hoy)).toBe(true);
+    expect(aFiltro('stock-bajo')).toBe('stock-bajo');
   });
 
   it('sin stock y todos', () => {
