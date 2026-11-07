@@ -62,6 +62,7 @@ export default async function InicioPanel({
 
       <section className="grid gap-3 sm:grid-cols-2">
         <Atajo href="/app/stock" titulo="Ver stock" texto="Cuánto tienes de cada producto y sus lotes" />
+        {esDueno && <Atajo href="/app/ventas" titulo="Ventas del día" texto="Qué se vendió, quién lo vendió y cuánto entró" />}
         {esDueno && <Atajo href="/app/mercaderia" titulo="Ingresar mercadería" texto="Registra un lote con su fecha de vencimiento" />}
         {esDueno && <Atajo href="/app/productos" titulo="Productos" texto="Tu catálogo y precios de venta" />}
         {esDueno && <Atajo href="/app/equipo" titulo="Equipo" texto="Crea la cuenta de tu ayudante" />}

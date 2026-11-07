@@ -4,15 +4,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Rol } from '@/lib/contexto';
 
-type Item = { href: string; texto: string; icono: string; soloDueno?: boolean };
+// movil: false = no va en la barra inferior del celular (se llega desde el inicio)
+type Item = { href: string; texto: string; icono: string; soloDueno?: boolean; movil?: boolean };
 
 const ITEMS: Item[] = [
   { href: '/app', texto: 'Inicio', icono: 'M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z' },
   { href: '/app/vender', texto: 'Vender', icono: 'M3 4h2l2.4 11.2a1 1 0 001 .8h9.2a1 1 0 001-.8L20 8H6.2M9 20a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z' },
   { href: '/app/stock', texto: 'Stock', icono: 'M4 7l8-4 8 4-8 4-8-4zm0 5l8 4 8-4M4 17l8 4 8-4' },
+  { href: '/app/ventas', texto: 'Ventas', icono: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4', soloDueno: true },
   { href: '/app/mercaderia', texto: 'Mercadería', icono: 'M12 4v12m0 0l-4-4m4 4l4-4M4 20h16', soloDueno: true },
   { href: '/app/productos', texto: 'Productos', icono: 'M4 6h16M4 12h16M4 18h10', soloDueno: true },
-  { href: '/app/equipo', texto: 'Equipo', icono: 'M16 19v-1a4 4 0 00-4-4H7a4 4 0 00-4 4v1M9.5 10a3 3 0 100-6 3 3 0 000 6zM21 19v-1a4 4 0 00-3-3.9M16 4.1a3 3 0 010 5.8', soloDueno: true },
+  { href: '/app/equipo', texto: 'Equipo', icono: 'M16 19v-1a4 4 0 00-4-4H7a4 4 0 00-4 4v1M9.5 10a3 3 0 100-6 3 3 0 000 6zM21 19v-1a4 4 0 00-3-3.9M16 4.1a3 3 0 010 5.8', soloDueno: true, movil: false },
 ];
 
 export function Navegacion({ rol, variante }: { rol: Rol; variante: 'lateral' | 'inferior' }) {
@@ -24,7 +26,7 @@ export function Navegacion({ rol, variante }: { rol: Rol; variante: 'lateral' | 
     return (
       <nav aria-label="Menú principal" className="fixed inset-x-0 bottom-0 z-20 border-t border-linea bg-tarjeta/95 backdrop-blur md:hidden">
         <ul className="mx-auto flex max-w-lg justify-around px-1 pb-[env(safe-area-inset-bottom)]">
-          {items.map((i) => (
+          {items.filter((i) => i.movil !== false).map((i) => (
             <li key={i.href} className="flex-1">
               <Link href={i.href} aria-current={activo(i.href) ? 'page' : undefined}
                 className={`flex flex-col items-center gap-0.5 py-2 text-[0.7rem] font-semibold ${activo(i.href) ? 'text-marca' : 'text-suave'}`}>
