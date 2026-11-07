@@ -209,6 +209,25 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await expect(page.getByTestId('venta-ok')).toContainText('5.20');
   });
 
+  test('CP30, CP31 Alerta de stock mínimo (HU14)', async ({ page }) => {
+    await ingresar(page, DUENO.email, DUENO.password);
+    // Galletas: 30 ingresadas y 1 vendida = 29. Con un mínimo de 30 debe pedir reposición.
+    await page.goto('/app/productos');
+    await page.getByRole('link', { name: /Galletas Soda Field/ }).click();
+    await page.getByLabel('Stock mínimo (opcional)').fill('30');
+    await page.getByRole('button', { name: 'Guardar producto' }).click();
+    await expect(page.getByText('Producto actualizado.')).toBeVisible();
+
+    await page.goto('/app');
+    await page.getByRole('link', { name: /por reponer/ }).click();
+    await expect(page).toHaveURL(/\/app\/stock\?filtro=stock-bajo/);
+    const lista = page.getByTestId('lista-stock').getByRole('listitem');
+    await expect(lista).toHaveCount(1);
+    await expect(lista.first()).toContainText('Galletas Soda Field');
+    await expect(lista.first().getByTestId('alertas-producto')).toContainText('Stock bajo · mínimo 30');
+    await captura(page, '17-stock-minimo');
+  });
+
   test('CP16 La interfaz no deja vender más que el stock', async ({ page }) => {
     await ingresar(page, DUENO.email, DUENO.password);
     await page.goto('/app/vender');
@@ -273,7 +292,7 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await captura(page, '13-panel-ayudante');
 
     // Escribir la dirección a mano tampoco abre las pantallas del dueño
-    for (const ruta of ['/app/productos', '/app/productos/nuevo', '/app/mercaderia', '/app/equipo']) {
+    for (const ruta of ['/app/productos', '/app/productos/nuevo', '/app/mercaderia', '/app/equipo', '/app/ventas']) {
       await page.goto(ruta);
       await expect(page).toHaveURL(/\/app\?restringido=1/);
     }
@@ -285,6 +304,25 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await page.getByRole('button', { name: 'Confirmar venta' }).click();
     await expect(page.getByTestId('venta-ok')).toBeVisible();
     await salir(page);
+  });
+
+  test('CP18, CP19 Historial de ventas del día (HU08)', async ({ page }) => {
+    await ingresar(page, DUENO.email, DUENO.password);
+    await page.getByRole('link', { name: /Ventas del día/ }).click();
+    await expect(page).toHaveURL(/\/app\/ventas$/);
+    // Ventas del flujo: 14,50 (Yape, dueño) + 5,20 (efectivo, dueño) + 1,20 (efectivo, ayudante)
+    const lista = page.getByTestId('lista-ventas').getByRole('listitem');
+    await expect(lista).toHaveCount(3);
+    await expect(lista.first()).toContainText(AYUDANTE.nombre); // la más reciente arriba
+    await expect(lista.first()).toContainText('1 × Galletas Soda Field');
+    await expect(page.getByTestId('total-dia')).toHaveText(/20\.90/);
+    await expect(page.getByTestId('cantidad-ventas')).toContainText('3 ventas');
+    await expect(page.getByTestId('por-metodo')).toContainText('Yape');
+    await captura(page, '18-historial-ventas');
+
+    // El día anterior no tiene ventas
+    await page.getByRole('link', { name: '← Día anterior' }).click();
+    await expect(page.getByText('No hay ventas registradas este día.')).toBeVisible();
   });
 
   test('Vista móvil de la venta', async ({ browser }) => {

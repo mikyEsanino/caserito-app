@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { esCorreoDuplicado, mensajeBD, mensajeLogin, MSJ_CREDENCIALES } from '@/lib/errores';
 import { redondeoEfectivo, totalACobrar } from '@/lib/dinero';
 import { diasHasta, enSoles, fecha } from '@/lib/formato';
+import { esFechaValida, moverDia, rangoDiaLima } from '@/lib/ventas';
 import {
   aNumero,
   hoyLima,
@@ -154,5 +155,20 @@ describe('Formato y fechas', () => {
     expect(diasHasta('2026-10-15', '2026-10-12')).toBe(3);
     expect(aNumero('3,5')).toBe(3.5);
     expect(Number.isNaN(aNumero('3,5,1'))).toBe(true);
+  });
+});
+
+describe('Día de Lima para el historial (HU08)', () => {
+  it('el día va de 00:00 a 00:00 en UTC−5', () => {
+    expect(rangoDiaLima('2026-11-06')).toEqual({ desde: '2026-11-06T00:00:00-05:00', hasta: '2026-11-07T00:00:00-05:00' });
+    expect(rangoDiaLima('2026-12-31').hasta).toBe('2027-01-01T00:00:00-05:00');
+  });
+
+  it('mueve días y valida fechas', () => {
+    expect(moverDia('2026-03-01', -1)).toBe('2026-02-28');
+    expect(esFechaValida('2026-02-30')).toBe(false);
+    expect(esFechaValida('2026-11-06')).toBe(true);
+    expect(esFechaValida('<script>')).toBe(false);
+    expect(esFechaValida(undefined)).toBe(false);
   });
 });

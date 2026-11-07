@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Insignia } from '@/components/ui';
-import { cumpleFiltro, DIAS_POR_VENCER, porVencer, sinStock, tieneVencidos, type FiltroStock } from '@/lib/alertas';
+import { cumpleFiltro, DIAS_POR_VENCER, porVencer, sinStock, stockBajo, tieneVencidos, type FiltroStock } from '@/lib/alertas';
 import { cantidad, diasHasta, enSoles, fecha, NOMBRE_UNIDAD } from '@/lib/formato';
 
 export type LoteVista = {
@@ -22,6 +22,7 @@ export type FilaStock = {
   precio_venta: number;
   stock_disponible: number;
   stock_vencido: number;
+  stock_minimo: number;
   proximo_vencimiento: string | null;
   lotes: LoteVista[];
 };
@@ -30,6 +31,7 @@ const ETIQUETAS: Record<FiltroStock, string> = {
   todos: 'Todos',
   vencidos: 'Vencidos',
   'por-vencer': `Por vencer (${DIAS_POR_VENCER} días)`,
+  'stock-bajo': 'Por reponer',
   'sin-stock': 'Sin stock',
 };
 
@@ -93,7 +95,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
                 activo ? 'border-marca bg-marca text-white' : 'border-linea bg-tarjeta text-tinta hover:border-marca'
               }`}>
               {ETIQUETAS[f]}{' '}
-              <span className={activo ? 'text-white/85' : alerta ? (f === 'por-vencer' ? 'text-alerta' : 'text-error') : 'text-suave'}>
+              <span className={activo ? 'text-white/85' : alerta ? (f === 'por-vencer' || f === 'stock-bajo' ? 'text-alerta' : 'text-error') : 'text-suave'}>
                 ({conteo[f]})
               </span>
             </button>
@@ -110,6 +112,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
           const agotado = sinStock(f);
           const vencidos = tieneVencidos(f);
           const pronto = porVencer(f, hoy);
+          const bajo = stockBajo(f) && !agotado;
           return (
             <li key={f.producto_id} data-testid={`stock-${f.producto_id}`}
               className={`overflow-hidden rounded-2xl border bg-tarjeta ${vencidos ? 'border-error/40' : pronto ? 'border-alerta/40' : 'border-linea'}`}>
@@ -121,10 +124,11 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
                     {f.categoria} · {enSoles(f.precio_venta)}
                     {f.proximo_vencimiento && ` · vence ${fecha(f.proximo_vencimiento)}`}
                   </span>
-                  {(vencidos || pronto || agotado) && (
+                  {(vencidos || pronto || bajo || agotado) && (
                     <span className="mt-1.5 flex flex-wrap gap-1.5" data-testid="alertas-producto">
                       {vencidos && <Insignia tono="error">{cantidad(f.stock_vencido)} vencido{f.stock_vencido === 1 ? '' : 's'}</Insignia>}
                       {pronto && f.proximo_vencimiento && <Insignia tono="alerta">{textoDias(diasHasta(f.proximo_vencimiento, hoy))}</Insignia>}
+                      {bajo && <Insignia tono="alerta">Stock bajo · mínimo {cantidad(f.stock_minimo)}</Insignia>}
                       {agotado && <Insignia tono="error">Sin stock</Insignia>}
                     </span>
                   )}

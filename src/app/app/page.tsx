@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Aviso } from '@/components/ui';
-import { porVencer, sinStock as estaSinStock, tieneVencidos } from '@/lib/alertas';
+import { porVencer, sinStock as estaSinStock, stockBajo, tieneVencidos } from '@/lib/alertas';
 import { requireContexto } from '@/lib/contexto';
 import { createClient } from '@/lib/supabase/server';
 import { hoyLima } from '@/lib/validaciones';
@@ -17,15 +17,22 @@ export default async function InicioPanel({
   const supabase = await createClient();
   const { data: stock } = await supabase
     .from('v_stock')
-    .select('producto_id, stock_disponible, stock_vencido, proximo_vencimiento, activo');
+    .select('producto_id, stock_disponible, stock_vencido, stock_minimo, proximo_vencimiento, activo');
 
   const hoy = hoyLima();
   const activos = (stock ?? [])
     .filter((p) => p.activo)
-    .map((p) => ({ stock_disponible: Number(p.stock_disponible), stock_vencido: Number(p.stock_vencido), proximo_vencimiento: p.proximo_vencimiento }));
+    .map((p) => ({
+      stock_disponible: Number(p.stock_disponible),
+      stock_vencido: Number(p.stock_vencido),
+      stock_minimo: Number(p.stock_minimo),
+      proximo_vencimiento: p.proximo_vencimiento,
+    }));
   const sinStock = activos.filter(estaSinStock).length;
   const conVencidos = activos.filter(tieneVencidos).length;
   const prontos = activos.filter((p) => porVencer(p, hoy)).length;
+  // HU14: incluye los que ya se agotaron y tienen un mínimo definido (mismo criterio que el filtro de Stock)
+  const porReponer = activos.filter(stockBajo).length;
   const esDueno = ctx.rol === 'dueno';
 
   return (
@@ -47,14 +54,15 @@ export default async function InicioPanel({
       </Link>
 
       <section aria-label="Resumen" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Dato valor={activos.length} texto="productos" href="/app/stock" />
         <Dato valor={conVencidos} texto="con lotes vencidos" tono={conVencidos > 0 ? 'error' : undefined} href="/app/stock?filtro=vencidos" />
         <Dato valor={prontos} texto="por vencer (7 días)" tono={prontos > 0 ? 'alerta' : undefined} href="/app/stock?filtro=por-vencer" />
+        <Dato valor={porReponer} texto="por reponer" tono={porReponer > 0 ? 'alerta' : undefined} href="/app/stock?filtro=stock-bajo" />
         <Dato valor={sinStock} texto="sin stock" tono={sinStock > 0 ? 'alerta' : undefined} href="/app/stock?filtro=sin-stock" />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2">
         <Atajo href="/app/stock" titulo="Ver stock" texto="Cuánto tienes de cada producto y sus lotes" />
+        {esDueno && <Atajo href="/app/ventas" titulo="Ventas del día" texto="Qué se vendió, quién lo vendió y cuánto entró" />}
         {esDueno && <Atajo href="/app/mercaderia" titulo="Ingresar mercadería" texto="Registra un lote con su fecha de vencimiento" />}
         {esDueno && <Atajo href="/app/productos" titulo="Productos" texto="Tu catálogo y precios de venta" />}
         {esDueno && <Atajo href="/app/equipo" titulo="Equipo" texto="Crea la cuenta de tu ayudante" />}
