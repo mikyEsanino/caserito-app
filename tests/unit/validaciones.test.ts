@@ -8,6 +8,7 @@ import {
   aNumero,
   hoyLima,
   validarAyudante,
+  validarDiasAviso,
   validarItemsVenta,
   validarLote,
   validarProducto,
@@ -170,5 +171,26 @@ describe('Día de Lima para el historial (HU08)', () => {
     expect(esFechaValida('2026-11-06')).toBe(true);
     expect(esFechaValida('<script>')).toBe(false);
     expect(esFechaValida(undefined)).toBe(false);
+  });
+});
+
+describe('Días de aviso de vencimiento (HU13)', () => {
+  it('acepta enteros de 1 a 60', () => {
+    const r = validarDiasAviso(fd({ dias_aviso: '15' }));
+    expect(r.ok && r.data.dias_aviso_vencimiento).toBe(15);
+    expect(validarDiasAviso(fd({ dias_aviso: '1' })).ok).toBe(true);
+    expect(validarDiasAviso(fd({ dias_aviso: '60' })).ok).toBe(true);
+  });
+
+  it('rechaza vacío, cero, decimales y más de 60', () => {
+    for (const v of ['', '0', '2.5', '61', 'siete']) expect(validarDiasAviso(fd({ dias_aviso: v })).ok).toBe(false);
+  });
+});
+
+describe('Mensajes de merma (HU13)', () => {
+  it('muestra el motivo de negocio que devuelve la BD', () => {
+    const err = { code: '22023', message: 'El lote todavía no vence: no se puede registrar como merma', hint: 'LOTE_NO_VENCIDO' };
+    expect(mensajeBD(err, 'merma')).toBe(err.message);
+    expect(mensajeBD({ code: '42501', message: 'x', hint: 'NO_AUTORIZADO' }, 'merma')).toBe('No tienes permiso para realizar esta acción.');
   });
 });

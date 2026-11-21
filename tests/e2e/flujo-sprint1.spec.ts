@@ -266,6 +266,39 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     await expect(lista.filter({ hasText: 'Inca Kola 500 ml' }).getByTestId('alertas-producto')).toContainText('vence en 4 días');
   });
 
+  test('CP28, CP29 Vencimientos y mermas (HU13)', async ({ page }) => {
+    await ingresar(page, DUENO.email, DUENO.password);
+    await page.getByRole('link', { name: /Vencimientos y mermas/ }).click();
+    await expect(page).toHaveURL(/\/app\/vencimientos$/);
+
+    // CP28: con el aviso por defecto (7 días) aparece el lote de Inca Kola que vence en 4 días
+    const porVencer = page.getByTestId('lotes-por-vencer').getByRole('listitem');
+    await expect(porVencer.filter({ hasText: 'Inca Kola 500 ml' })).toHaveCount(1);
+    await expect(porVencer.filter({ hasText: 'Inca Kola 500 ml' })).toContainText('en 4 días');
+
+    // Con 3 días de aviso ya no aparece; se vuelve a 7
+    const dias = page.getByLabel('Avisarme con estos días de anticipación');
+    await dias.fill('3');
+    await page.getByRole('button', { name: 'Guardar' }).click();
+    await expect(page.getByText('verás los lotes que vencen en los próximos 3 días')).toBeVisible();
+    await expect(page.getByText('Ningún lote vence en los próximos 3 días.')).toBeVisible();
+    await dias.fill('7');
+    await page.getByRole('button', { name: 'Guardar' }).click();
+    await expect(porVencer.filter({ hasText: 'Inca Kola 500 ml' })).toHaveCount(1);
+
+    // CP29: el lote de yogurt vencido se registra como merma
+    const vencidos = page.getByTestId('lotes-vencidos').getByRole('listitem');
+    await expect(vencidos).toHaveCount(1);
+    await expect(vencidos.first()).toContainText('Yogurt Gloria fresa 1 L');
+    await page.screenshot({ path: 'docs/capturas/19-vencimientos.png', fullPage: true });
+    await vencidos.first().getByRole('button', { name: /Registrar merma/ }).click();
+    await expect(page.getByText(/Merma registrada: 6 de "Yogurt Gloria fresa 1 L"/)).toBeVisible();
+    await expect(page.getByText('No hay lotes vencidos con unidades. ¡Todo en orden!')).toBeVisible();
+    await expect(page.getByTestId('mermas')).toContainText('Yogurt Gloria fresa 1 L');
+    await expect(page.getByTestId('perdida-mermas')).toHaveText(/32\.40/);
+    await page.screenshot({ path: 'docs/capturas/20-mermas.png', fullPage: true });
+  });
+
   test('CP06 Registro de ayudante por el dueño', async ({ page }) => {
     await ingresar(page, DUENO.email, DUENO.password);
     await page.goto('/app/equipo');
@@ -288,11 +321,11 @@ test.describe.serial('Sprint 1 · flujo completo', () => {
     const menu = page.getByRole('navigation', { name: 'Menú principal' }).first();
     await expect(menu.getByRole('link', { name: 'Vender' })).toBeVisible();
     await expect(menu.getByRole('link', { name: 'Stock' })).toBeVisible();
-    for (const oculto of ['Productos', 'Mercadería', 'Equipo']) await expect(menu.getByRole('link', { name: oculto })).toHaveCount(0);
+    for (const oculto of ['Productos', 'Mercadería', 'Equipo', 'Ventas', 'Vencimientos']) await expect(menu.getByRole('link', { name: oculto })).toHaveCount(0);
     await captura(page, '13-panel-ayudante');
 
     // Escribir la dirección a mano tampoco abre las pantallas del dueño
-    for (const ruta of ['/app/productos', '/app/productos/nuevo', '/app/mercaderia', '/app/equipo', '/app/ventas']) {
+    for (const ruta of ['/app/productos', '/app/productos/nuevo', '/app/mercaderia', '/app/equipo', '/app/ventas', '/app/vencimientos']) {
       await page.goto(ruta);
       await expect(page).toHaveURL(/\/app\?restringido=1/);
     }

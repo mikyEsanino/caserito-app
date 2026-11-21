@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Encabezado } from '@/components/ui';
 import { aFiltro } from '@/lib/alertas';
 import { requireContexto } from '@/lib/contexto';
@@ -9,7 +10,7 @@ export const metadata = { title: 'Stock' };
 
 // HU06: stock por producto con detalle de lotes ordenado por vencimiento
 export default async function Stock({ searchParams }: { searchParams: Promise<{ filtro?: string }> }) {
-  await requireContexto();
+  const ctx = await requireContexto();
   const filtro = aFiltro((await searchParams).filtro);
   const supabase = await createClient();
   const [{ data: stock }, { data: lotes }] = await Promise.all([
@@ -49,7 +50,12 @@ export default async function Stock({ searchParams }: { searchParams: Promise<{ 
   return (
     <>
       <Encabezado titulo="Stock" descripcion="Toca un producto para ver sus lotes, del que vence primero al último." />
-      <ListaStock filas={filas} hoy={hoyLima()} filtroInicial={filtro} />
+      {ctx.rol === 'dueno' && filas.some((f) => f.stock_vencido > 0) && (
+        <p className="mb-3 text-sm">
+          <Link href="/app/vencimientos" className="font-semibold text-marca underline">Registrar los lotes vencidos como merma →</Link>
+        </p>
+      )}
+      <ListaStock filas={filas} hoy={hoyLima()} filtroInicial={filtro} dias={ctx.diasAviso} />
     </>
   );
 }

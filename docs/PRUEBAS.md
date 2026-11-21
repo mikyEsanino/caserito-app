@@ -1,11 +1,13 @@
-# Registro de pruebas · Sprint 1
+# Registro de pruebas · Sprints 1 a 3
 
 Casos de prueba (CP) de la matriz de trazabilidad del informe, con la prueba automática que los verifica.
 
 - **API**: Vitest contra Supabase (Auth + PostgREST + PostgreSQL). Prueba las reglas en la base de datos: RLS, triggers y la función de venta.
 - **E2E**: Playwright en Chromium, con el flujo real del usuario en la interfaz. Guarda capturas en `docs/capturas/`.
 
-Ejecución del 12/10/2026: **38/38 pruebas unitarias y de API aprobadas** y **12/12 pruebas e2e aprobadas**.
+Ejecución del 12/10/2026 (Sprint 1): **38/38 pruebas unitarias y de API aprobadas** y **12/12 pruebas e2e aprobadas**.
+
+Ejecución del 20/11/2026 (Sprint 3, con HU13): **67/67 pruebas unitarias y de API aprobadas** y **17/17 pruebas e2e aprobadas**.
 
 | CP | Historia | Caso de prueba | Prueba de API (`tests/api`) | Prueba e2e (`tests/e2e`) | Resultado |
 |---|---|---|---|---|---|
@@ -27,17 +29,27 @@ Ejecución del 12/10/2026: **38/38 pruebas unitarias y de API aprobadas** y **12
 | CP15 | HU07 | Descuento de stock por criterio FEFO | `rf03-ventas` · CP15 | CP15 | Aprobado |
 | CP16 | HU07 | Venta con stock insuficiente | `rf03-ventas` · CP16 | CP16 | Aprobado |
 | CP17 | HU07 | Atomicidad de la venta ante un error | `rf03-ventas` · CP17 y CP17b | — | Aprobado |
+| CP14c | HU07 | Redondeo a favor del cliente en efectivo | `rf03-ventas` · CP14c | CP14c | Aprobado |
+| CP18 | HU08 | Listado de ventas del día | `rf03-historial` · CP18 | CP18 | Aprobado |
+| CP19 | HU08 | Total vendido del día | `rf03-historial` · CP19 | CP19 | Aprobado |
+| CP28 | HU13 | Alerta de lotes por vencer (días configurables) | `rf07-vencimientos` · CP28 | CP28 | Aprobado |
+| CP29 | HU13 | Registro de lote vencido como merma | `rf07-vencimientos` · CP29 | CP29 | Aprobado |
+| CP30 | HU14 | Configuración de stock mínimo | `rf07-alertas` · CP30 | CP30 | Aprobado |
+| CP31 | HU14 | Alerta de stock bajo | `rf07-alertas` · CP31 | CP31 | Aprobado |
 
 Además, `tests/unit/validaciones.test.ts` tiene 20 pruebas unitarias de las reglas de los formularios (contraseña, precios, fechas en hora de Lima, cantidades enteras, mensajes de error).
 
 ## Verificación de que las pruebas detectan errores
 
-Para comprobar que las pruebas no pasan "por defecto", se introdujeron dos defectos a propósito y luego se revirtieron:
+Para comprobar que las pruebas no pasan "por defecto", se introdujeron defectos a propósito y luego se revirtieron:
 
 | Defecto introducido | Prueba que lo detectó |
 |---|---|
 | La venta descuenta del lote que vence **último** (FEFO invertido) | CP15 falló |
 | La política RLS deja que el ayudante lea la tabla de lotes (con costos) | CP07 falló |
+| La alerta de stock bajo compara con "menor que" en lugar de "menor o igual que" el mínimo (Sprint 2) | CP31 y la prueba unitaria de HU14 fallaron |
+| El día del historial se calcula en hora UTC y no en hora de Lima (Sprint 2) | CP18, CP19 y la prueba unitaria de HU08 fallaron |
+| La merma no descuenta el lote vencido (Sprint 3) | CP29 falló |
 
 ## Defectos encontrados durante el sprint
 

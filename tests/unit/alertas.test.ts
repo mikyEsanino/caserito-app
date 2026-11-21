@@ -1,6 +1,6 @@
 // Filtros de alertas de la pantalla de stock
 import { describe, expect, it } from 'vitest';
-import { aFiltro, cumpleFiltro, porVencer, stockBajo } from '@/lib/alertas';
+import { aFiltro, cumpleFiltro, lotePorVencer, porVencer, stockBajo } from '@/lib/alertas';
 
 const hoy = '2026-10-13';
 const prod = (stock_disponible: number, stock_vencido: number, proximo_vencimiento: string | null) => ({ stock_disponible, stock_vencido, proximo_vencimiento });
@@ -40,5 +40,23 @@ describe('Alertas de stock', () => {
     expect(aFiltro('vencidos')).toBe('vencidos');
     expect(aFiltro('<script>')).toBe('todos');
     expect(aFiltro(undefined)).toBe('todos');
+  });
+});
+
+describe('HU13 · Días de aviso configurables', () => {
+  it('por vencer respeta los días que eligió el dueño', () => {
+    const p = prod(5, 0, '2026-10-23'); // vence en 10 días
+    expect(porVencer(p, hoy)).toBe(false); // 7 por defecto
+    expect(porVencer(p, hoy, 10)).toBe(true);
+    expect(cumpleFiltro(p, 'por-vencer', hoy, 15)).toBe(true);
+    expect(cumpleFiltro(p, 'por-vencer', hoy, 3)).toBe(false);
+  });
+
+  it('un lote por vencer tiene saldo y vence entre hoy y el límite', () => {
+    expect(lotePorVencer({ cantidad_actual: 4, fecha_vencimiento: '2026-10-13' }, hoy, 7)).toBe(true); // hoy
+    expect(lotePorVencer({ cantidad_actual: 4, fecha_vencimiento: '2026-10-20' }, hoy, 7)).toBe(true); // día 7
+    expect(lotePorVencer({ cantidad_actual: 4, fecha_vencimiento: '2026-10-21' }, hoy, 7)).toBe(false);
+    expect(lotePorVencer({ cantidad_actual: 4, fecha_vencimiento: '2026-10-12' }, hoy, 7)).toBe(false); // ya venció
+    expect(lotePorVencer({ cantidad_actual: 0, fecha_vencimiento: '2026-10-15' }, hoy, 7)).toBe(false); // sin saldo
   });
 });

@@ -13,6 +13,8 @@ export type Contexto = {
   bodegaId: string;
   bodegaNombre: string;
   bodegaDireccion: string;
+  /** HU13: días de anticipación para avisar los lotes por vencer */
+  diasAviso: number;
 };
 
 /** Usuario con sesión + su perfil y bodega. Se calcula una vez por request. */
@@ -25,13 +27,13 @@ export const getContexto = cache(async (): Promise<Contexto | null> => {
 
   const { data: perfil } = await supabase
     .from('perfiles')
-    .select('id, nombre, email, rol, bodega_id, bodegas ( nombre, direccion )')
+    .select('id, nombre, email, rol, bodega_id, bodegas ( nombre, direccion, dias_aviso_vencimiento )')
     .eq('id', user.id)
     .maybeSingle();
 
   if (!perfil) return null;
 
-  const bodega = perfil.bodegas as unknown as { nombre: string; direccion: string } | null;
+  const bodega = perfil.bodegas as unknown as { nombre: string; direccion: string; dias_aviso_vencimiento: number } | null;
   return {
     userId: perfil.id,
     nombre: perfil.nombre,
@@ -40,6 +42,7 @@ export const getContexto = cache(async (): Promise<Contexto | null> => {
     bodegaId: perfil.bodega_id,
     bodegaNombre: bodega?.nombre ?? 'Mi bodega',
     bodegaDireccion: bodega?.direccion ?? '',
+    diasAviso: bodega?.dias_aviso_vencimiento ?? 7,
   };
 });
 

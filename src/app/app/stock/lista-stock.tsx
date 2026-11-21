@@ -27,19 +27,27 @@ export type FilaStock = {
   lotes: LoteVista[];
 };
 
-const ETIQUETAS: Record<FiltroStock, string> = {
-  todos: 'Todos',
-  vencidos: 'Vencidos',
-  'por-vencer': `Por vencer (${DIAS_POR_VENCER} días)`,
-  'stock-bajo': 'Por reponer',
-  'sin-stock': 'Sin stock',
-};
+const FILTROS_STOCK: FiltroStock[] = ['todos', 'vencidos', 'por-vencer', 'stock-bajo', 'sin-stock'];
+
+function etiqueta(f: FiltroStock, dias: number): string {
+  return { todos: 'Todos', vencidos: 'Vencidos', 'por-vencer': `Por vencer (${dias} días)`, 'stock-bajo': 'Por reponer', 'sin-stock': 'Sin stock' }[f];
+}
 
 function textoDias(dias: number) {
   return dias === 0 ? 'vence hoy' : `vence en ${dias} día${dias === 1 ? '' : 's'}`;
 }
 
-export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: FilaStock[]; hoy: string; filtroInicial?: FiltroStock }) {
+export function ListaStock({
+  filas,
+  hoy,
+  filtroInicial = 'todos',
+  dias = DIAS_POR_VENCER,
+}: {
+  filas: FilaStock[];
+  hoy: string;
+  filtroInicial?: FiltroStock;
+  dias?: number;
+}) {
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<FiltroStock>(filtroInicial);
   const [abiertos, setAbiertos] = useState<Set<number>>(new Set());
@@ -47,17 +55,17 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
   const conteo = useMemo(
     () =>
       Object.fromEntries(
-        (Object.keys(ETIQUETAS) as FiltroStock[]).map((f) => [f, filas.filter((p) => cumpleFiltro(p, f, hoy)).length]),
+        FILTROS_STOCK.map((f) => [f, filas.filter((p) => cumpleFiltro(p, f, hoy, dias)).length]),
       ) as Record<FiltroStock, number>,
-    [filas, hoy],
+    [filas, hoy, dias],
   );
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return filas
-      .filter((f) => cumpleFiltro(f, filtro, hoy))
+      .filter((f) => cumpleFiltro(f, filtro, hoy, dias))
       .filter((f) => !q || f.nombre.toLowerCase().includes(q) || f.categoria.toLowerCase().includes(q));
-  }, [busqueda, filas, filtro, hoy]);
+  }, [busqueda, filas, filtro, hoy, dias]);
 
   // En los filtros de vencimiento el detalle de lotes se muestra abierto: se ve de inmediato cuál es
   const expandirTodo = filtro === 'vencidos' || filtro === 'por-vencer';
@@ -86,7 +94,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
   return (
     <div className="space-y-3">
       <div role="group" aria-label="Filtrar productos" className="flex flex-wrap gap-2">
-        {(Object.keys(ETIQUETAS) as FiltroStock[]).map((f) => {
+        {FILTROS_STOCK.map((f) => {
           const activo = filtro === f;
           const alerta = f !== 'todos' && conteo[f] > 0;
           return (
@@ -94,7 +102,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
               className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
                 activo ? 'border-marca bg-marca text-white' : 'border-linea bg-tarjeta text-tinta hover:border-marca'
               }`}>
-              {ETIQUETAS[f]}{' '}
+              {etiqueta(f, dias)}{' '}
               <span className={activo ? 'text-white/85' : alerta ? (f === 'por-vencer' || f === 'stock-bajo' ? 'text-alerta' : 'text-error') : 'text-suave'}>
                 ({conteo[f]})
               </span>
@@ -111,7 +119,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
           const expandido = expandirTodo || abiertos.has(f.producto_id);
           const agotado = sinStock(f);
           const vencidos = tieneVencidos(f);
-          const pronto = porVencer(f, hoy);
+          const pronto = porVencer(f, hoy, dias);
           const bajo = stockBajo(f) && !agotado;
           return (
             <li key={f.producto_id} data-testid={`stock-${f.producto_id}`}
@@ -155,7 +163,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
                       </thead>
                       <tbody>
                         {f.lotes.map((l) => {
-                          const dias = diasHasta(l.fecha_vencimiento, hoy);
+                          const faltan = diasHasta(l.fecha_vencimiento, hoy);
                           return (
                             <tr key={l.id} className={`border-t border-linea/70 ${l.vencido ? 'bg-error-claro/60' : ''}`}>
                               <td className="py-1.5">#{l.id}</td>
@@ -163,8 +171,8 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
                                 {fecha(l.fecha_vencimiento)}{' '}
                                 {l.vencido ? (
                                   <Insignia tono="error">Vencido · no se vende</Insignia>
-                                ) : dias <= DIAS_POR_VENCER ? (
-                                  <Insignia tono="alerta">{dias === 0 ? 'vence hoy' : `en ${dias} día${dias === 1 ? '' : 's'}`}</Insignia>
+                                ) : faltan <= dias ? (
+                                  <Insignia tono="alerta">{faltan === 0 ? 'vence hoy' : `en ${faltan} día${faltan === 1 ? '' : 's'}`}</Insignia>
                                 ) : null}
                               </td>
                               <td className="py-1.5 text-right font-semibold">
@@ -187,7 +195,7 @@ export function ListaStock({ filas, hoy, filtroInicial = 'todos' }: { filas: Fil
       </ul>
       {visibles.length === 0 && (
         <p className="tarjeta text-center text-suave">
-          {busqueda ? `No hay productos que coincidan con “${busqueda}”.` : `No hay productos en “${ETIQUETAS[filtro]}”. ¡Todo en orden!`}
+          {busqueda ? `No hay productos que coincidan con “${busqueda}”.` : `No hay productos en “${etiqueta(filtro, dias)}”. ¡Todo en orden!`}
         </p>
       )}
     </div>

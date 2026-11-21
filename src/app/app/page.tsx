@@ -30,7 +30,7 @@ export default async function InicioPanel({
     }));
   const sinStock = activos.filter(estaSinStock).length;
   const conVencidos = activos.filter(tieneVencidos).length;
-  const prontos = activos.filter((p) => porVencer(p, hoy)).length;
+  const prontos = activos.filter((p) => porVencer(p, hoy, ctx.diasAviso)).length;
   // HU14: incluye los que ya se agotaron y tienen un mínimo definido (mismo criterio que el filtro de Stock)
   const porReponer = activos.filter(stockBajo).length;
   const esDueno = ctx.rol === 'dueno';
@@ -55,7 +55,7 @@ export default async function InicioPanel({
 
       <section aria-label="Resumen" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Dato valor={conVencidos} texto="con lotes vencidos" tono={conVencidos > 0 ? 'error' : undefined} href="/app/stock?filtro=vencidos" />
-        <Dato valor={prontos} texto="por vencer (7 días)" tono={prontos > 0 ? 'alerta' : undefined} href="/app/stock?filtro=por-vencer" />
+        <Dato valor={prontos} texto={`por vencer (${ctx.diasAviso} días)`} tono={prontos > 0 ? 'alerta' : undefined} href="/app/stock?filtro=por-vencer" />
         <Dato valor={porReponer} texto="por reponer" tono={porReponer > 0 ? 'alerta' : undefined} href="/app/stock?filtro=stock-bajo" />
         <Dato valor={sinStock} texto="sin stock" tono={sinStock > 0 ? 'alerta' : undefined} href="/app/stock?filtro=sin-stock" />
       </section>
@@ -63,6 +63,7 @@ export default async function InicioPanel({
       <section className="grid gap-3 sm:grid-cols-2">
         <Atajo href="/app/stock" titulo="Ver stock" texto="Cuánto tienes de cada producto y sus lotes" />
         {esDueno && <Atajo href="/app/ventas" titulo="Ventas del día" texto="Qué se vendió, quién lo vendió y cuánto entró" />}
+        {esDueno && <Atajo href="/app/vencimientos" titulo="Vencimientos y mermas" texto="Lo que vence pronto y lo que ya venció" />}
         {esDueno && <Atajo href="/app/mercaderia" titulo="Ingresar mercadería" texto="Registra un lote con su fecha de vencimiento" />}
         {esDueno && <Atajo href="/app/productos" titulo="Productos" texto="Tu catálogo y precios de venta" />}
         {esDueno && <Atajo href="/app/equipo" titulo="Equipo" texto="Crea la cuenta de tu ayudante" />}

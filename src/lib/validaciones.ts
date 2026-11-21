@@ -178,3 +178,15 @@ export function validarItemsVenta(items: unknown): Resultado<ItemVenta[]> {
   }
   return { ok: true, data: limpios };
 }
+
+// ---------------------------------------------------------------- HU13
+export const DIAS_AVISO_LIMITES = { min: 1, max: 60 } as const;
+
+/** HU13 CA1: días de anticipación para avisar los lotes por vencer (entero de 1 a 60). */
+export function validarDiasAviso(fd: FormData): Resultado<{ dias_aviso_vencimiento: number }> {
+  const n = aNumero(fd.get('dias_aviso'));
+  const { min, max } = DIAS_AVISO_LIMITES;
+  if (!Number.isInteger(n) || n < min || n > max)
+    return { ok: false, errores: { dias_aviso: `Escribe un número entero de días entre ${min} y ${max}.` } };
+  return { ok: true, data: { dias_aviso_vencimiento: n } };
+}
